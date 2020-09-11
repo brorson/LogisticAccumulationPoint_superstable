@@ -4,7 +4,9 @@
 
 mpreal secant_accelerated(mpreal xm1, mpreal x0, unsigned long long R) {
   // This implements the 2nd order accelerated Secant method presented in the
-  // paper XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  // paper "A Method to Accelerate the Convergence of the Secant Algorithm",
+  // by M. J. P. Nijmeijer.
+
   // x is the location on the x axis, and f is the value of the fcn there.
   
   mpreal::set_default_prec(PREC);
