@@ -1,10 +1,41 @@
-The code in this directory was aimed at using first Newton's method
-on x followed by Picard iteration on lambda to find the lambda
-values at each superstable point.  Then find the limit to get
-the accumulation point.
-    
-This approach fails since I can't use Picard iteration
-on the slope condition.  The reason is that by definition one
-of the xn values is 1/2, so the slope computation is zero naturally,
-and I can't use it to compute lambda.
+This is a computation of the period-2 logistic map accumulation
+point.  This computation proceeds by finding the sequence of
+superstable points Rn of the map.  The algorithm is as follows:
+
+1.  Each superstable point is distinguished by the fact that xn = 1/2
+is one of the fixed points in the orbit.  Therefore, for the period n
+orbit I use starting value xn = 1/2, then iterate n times.  If I have
+chosen the exact correct lambda = Rn, then I will return to exactly xn
+= 1/2 after n iterations.  However, if my lambda is not exactly Rn,
+then after n iterations I will not return to 1/2.  Rather, xn will
+take some other value.
+
+2.  Therefore, finding the correct lambda is like root finding.  That
+is, I want to find the lambda for which 1/2 = f^n(lambda, 1/2) where
+f(lambda, x) = lambda*x*(1-x) is the logistic map.  f^n is the nth
+iteration of the logistic map.  My goal is to find lambda for which we
+have f^n(lambda, 1/2) - 1/2 = 0.  This goal is identical to root
+finding.
+
+3.  To find the root I tried several different methods.  First I used
+the bisection method.  This method works, but takes a long time to
+converge.  Next I used the secant method.  The secant method works
+too, and tended to converge after around 12 iterations.  Then I tried
+an accelerated secant method, and in this case convergence took about
+8 iterations.  The high digit results were found using the accelerated
+secant method.
+
+4.  The problem with this method to find Rn is that each iteration
+requires computing a full round-trip of the period-n logistic map.
+Since the periods grow as n = 2^m, the time complexity of this
+algorithm is O(2^m) which is terrible.  For example, my m=38 result
+took around 4 weeks to compute.
+
+5.  After computing the sequence of superstable points Rn, I used
+sequence acceleration techniques to squeeze as many digits out of the
+sequence as possible to compute the accumulation point lambda_inf.  I
+tried Aitken's method, the theta algorithm and lastly the epsilon
+algorithm.  The epsilon algorithm yeilded the most digits.
+
+Stuart Brorson, 9.11.2020
 
