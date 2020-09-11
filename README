@@ -1,0 +1,10 @@
+The code in this directory was aimed at using first Newton's method
+on x followed by Picard iteration on lambda to find the lambda
+values at each superstable point.  Then find the limit to get
+the accumulation point.
+    
+This approach fails since I can't use Picard iteration
+on the slope condition.  The reason is that by definition one
+of the xn values is 1/2, so the slope computation is zero naturally,
+and I can't use it to compute lambda.
+
