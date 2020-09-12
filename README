@@ -37,5 +37,18 @@ sequence as possible to compute the accumulation point lambda_inf.  I
 tried Aitken's method, the theta algorithm and lastly the epsilon
 algorithm.  The epsilon algorithm yeilded the most digits.
 
+-----------------------------------------------------------------
+
+The code is written in easy C++. If you want to repeat these 
+computations, you need to download and install the following 
+libraries (and their dependencies):
+
+    MPFR++: http://www.holoborodko.com/pavel/mpfr/
+    Eigen: http://eigen.tuxfamily.org/index.php?title=Main_Page
+
+Place both libraries into the main directory as sub-directories. 
+Then do "make" and if all goes well you should have an 
+executable called superstable_calc which you can play with.
+
 Stuart Brorson, 9.11.2020
 
