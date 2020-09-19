@@ -13,7 +13,7 @@ class Sequence():
 
     def __init__(self):
         # Set number of bits to keep around
-        gmpy2.get_context().precision=1500
+        gmpy2.get_context().precision=2000
         # These are values taken from the OEIS which I use when 
         # checking my results.
         self.lambdainf = mpfr("3.5699456718709449018420051513864989367638369115148323781079755299213628875001367775263210342163")
@@ -73,7 +73,7 @@ class Sequence():
         return x
 
         
-    def compute_lambdainf(self, x):
+    def compute_lambdainf_aitken(self, x):
         """
         This uses Aitken's method to compute a high-res 
         value of the accumulation point lambda_inf.  This
@@ -88,8 +88,67 @@ class Sequence():
             lam = x[n+2] - num/denom
             # print(lam)
             ax.append(lam)
+        return ax
+
+    def compute_lambdainf_theta(self, x):
+        """
+        Accelerates convergence using the theta algorithm.
+        Reference:  https://core.ac.uk/download/pdf/82687053.pdf
+        """
+        M = len(x)
+        ax = []
+        for n in range(M-3):
+            Snp1 = x[n+1]
+            Snp2 = x[n+2]
+            DSn = x[n+1]-x[n]
+            DSnp1 = x[n+2]-x[n+1]
+            DSnp2 = x[n+3]-x[n+2]
+            D2Sn = (x[n+2]-x[n+1]) - (x[n+1]-x[n])
+            D2Snp1 = (x[n+3]-x[n+2]) - (x[n+2]-x[n+1])
+
+            num = Snp1*DSnp2*D2Sn - Snp2*DSn*D2Snp1
+            denom = DSnp2*D2Sn - DSn*D2Snp1
+            Tn = num/denom
+            ax.append(Tn)
 
         return ax
+
+    def compute_lambdainf_epsilon(self, x):
+        """
+        Accelerates convergence using the epsilon
+        References:
+          Convergence acceleration methods: The past decade -- Claude BREZINSKI
+          The epsilon algorithm and related topics -- P.R. Graves-Morrisa, et al.
+        """
+        M = len(x)
+        k = 0
+        e = [ [ 0 for k1 in range(M) ] for k2 in range(M) ]
+
+        for n in range(M):
+            e[k][n] = x[n]
+        #print(e)
+        #print("---------------------------------------------------------------------------")
+
+        k = 1
+        for n in range(0, M-1):
+            e[k][n] = 1.0/(e[k-1][n+1] - e[k-1][n])
+        #print(e)
+        #print("---------------------------------------------------------------------------")
+
+
+        for k in range(2, M):
+            for n in range(M-k):
+                e[k][n] = e[k-2][n+1] + 1.0/(e[k-1][n+1] - e[k-1][n])
+        #print("---------------------------------------------------------------------------")  
+        #print(e)
+        #print("---------------------------------------------------------------------------")  
+        if ( (M % 2) == 1 ):
+            # odd
+            return e[M-1][0]
+        else:
+            # even
+            return e[M-1][1]
+
 
     def compare_lambdas(self, l1, l2):
         """
@@ -128,8 +187,7 @@ class Sequence():
         
 
 #*************************************************************************
-# 
-
+#*************************************************************************
 if (__name__ == "__main__"):
     seq = Sequence()
 
@@ -137,12 +195,11 @@ if (__name__ == "__main__"):
     print("============================================")
     # First read in files to analyze and compare.  Edit this
     # by hand.
-    filename1 = "results.txt"
+    filename2 = "results_superstable_prec200.txt"
+
 
     # This is index of highest element of sequence to use.
-    idx = 26
-    print("ax1 = "+filename1)
-
+    idx = -1
 
     # Look at last lambdas of each sequence to see how they match up.  
     # This verifies
@@ -150,56 +207,81 @@ if (__name__ == "__main__"):
     # of digits.  Also verify
     # last lambdas are less than lambda_inf.
     print("Checking last lambda from each file....")
-    dict1 = seq.read_vals(filename1)
-    x1 = seq.extract_lambdas(dict1)
-    print("len(x1) = "+str(len(x1)))
+    dict2 = seq.read_vals(filename2)
+    x2 = seq.extract_lambdas(dict2)
+    print("len(x2) = "+str(len(x2)))
 
-    print("idx = "+str(idx)+", lambda[idx] from x1 = ")
-    print(x1[idx])
-    if (x1[idx] < seq.lambdainf):
-        print("lambda["+str(idx)+"] is less than lambdainf -- good!")
+    print("idx = "+str(idx)+", lambda[idx] from x2 = ")
+    print(x2[idx])
+    if (x2[idx] < seq.lambdainf):
+        print("last lambda["+str(idx)+"] is less than lambdainf -- good!")
     else:
         print("!!! lambda["+str(idx)+"] is greater than lambdainf -- bad!!!")
 
-    # Truncate sequences to remove parts I don't want and to make sure
-    # they are the same length.
-    x1 = x1[0:idx]
-
 
     print("============================================")
-    print("Checking lambdas computed via Aitken acceleration....")
-    # Now run a loop and do repeated Aitken acceleration until I run
+    print("Checking lambdas computed via convergence acceleration....")
+    # Now run a loop and do repeated convergence acceleration until I run
     # out of terms in my sequence.  The final result will be held in 
-    # the last element of ax1 and ax2.
-    print("len(x1) = "+str(len(x1)))
-    ax1 = seq.compute_lambdainf(x1)
-    M = len(ax1)
+    # the last element of ax2.
+    
+    #-------------------------------------------------
+    # Aitken accelerated convergence
+    print("len(x2) = "+str(len(x2)))
+    ax2 = seq.compute_lambdainf_theta(x2)
+    M = len(ax2)
     while (M > 2):
-        ax1 = seq.compute_lambdainf(ax1)
-        M = len(ax1)
+        ax2 = seq.compute_lambdainf_aitken(ax2)
+        M = len(ax2)
     # Now we're done.  Print out result.
-    print("Lambda_inf computed from accelerated sequence ax1 = ")
-    print(ax1[-1])   # Result after several accelerations
+    print("Lambda_inf computed from Aitken accelerated sequence ax2 = ")
+    print(ax2[-1])   # Result after several accelerations
+    
+    #-------------------------------------------------
+    # Theta accelerated convergence
+    print("len(x2) = "+str(len(x2)))
+    ax2 = seq.compute_lambdainf_theta(x2)
+    M = len(ax2)
+    while (M > 3):
+        ax2 = seq.compute_lambdainf_theta(ax2)
+        M = len(ax2)
+    # Now we're done.  Print out result.
+    print("Lambda_inf computed from theta accelerated sequence ax2 = ")
+    print(ax2[-1])   # Result after several accelerations
+
+    #-------------------------------------------------
+    # epsilon accelerated convergence
+    print("len(x2) = "+str(len(x2)))
+    ax2 = seq.compute_lambdainf_epsilon(x2)
+    print("Lambda_inf computed from epsilon accelerated sequence ax2 = ")
+    print(ax2)
 
     print("============================================")
     # Check my results against the OEIS value.
     print("Compare my acclerated lambda_inf values with OEIS value....")
     print("lambdainf from OEIS = ")
     print(seq.lambdainf)
-    print("compare lambda_inf computed from ax1 against seq.lambdainf:")
-    seq.compare_lambdas(ax1[-1], seq.lambdainf)
+    print("compare lambda_inf computed from ax2 against seq.lambdainf:")
+    seq.compare_lambdas(ax2, seq.lambdainf)
 
     print("============================================")
     # Now use my accelerated sequence to compute Feigenbaum's
     # delta using delta = (lam_n+1 - lam_inf)/(lam_n -lam_inf)
     # Use my lam_inf computed using Aitken acceleration.
-    print("Compute delta using x1 sequence and my lambda_inf")
-    lambdainf = ax1[-1]
-    y1 = seq.compute_converging_diffs(x1, lambdainf)
-    M = len(y1)
+    print("Compute delta using x2 sequence and my lambda_inf")
+    lambdainf = ax2
+    y2 = seq.compute_converging_diffs(x2, lambdainf)
+    M = len(y2)
+    #print("Converging diffs = ")
+    #for i in range(M):
+    #    print(y2[i])
 
     print("-------------------------------------------")
-    deltas = seq.compute_converging_deltas(y1)
+    deltas = seq.compute_converging_deltas(y2)
+    #print("Computing deltas")
+    #print("Converging deltas = ")
+    #for i in range(M-1):
+    #    print(deltas[i])
     
     print("-------------------------------------------")
     diff = seq.delta - deltas[-1]
@@ -211,12 +293,19 @@ if (__name__ == "__main__"):
     # Now use my accelerated sequence to compute Feigenbaum's
     # delta using delta = (lam_n+1 - lam_inf)/(lam_n -lam_inf)
     # Use the OEIS lam_inf this time.
-    print("Compute delta using sequence x1 and the OEIS lambda_inf.")
-    y1 = seq.compute_converging_diffs(x1, seq.lambdainf)
-    M = len(y1)
+    print("Compute delta using sequence x2 and the OEIS lambda_inf.")
+    y2 = seq.compute_converging_diffs(x2, seq.lambdainf)
+    M = len(y2)
+    #print("Converging diffs = ")
+    #for i in range(M):
+    #    print(y2[i])
 
     print("-------------------------------------------")
-    deltas = seq.compute_converging_deltas(y1)
+    deltas = seq.compute_converging_deltas(y2)
+    #print("Computing deltas")
+    #print("Converging deltas = ")
+    #for i in range(M-1):
+    #    print(deltas[i])
     
     print("-------------------------------------------")
     diff = seq.delta - deltas[-1]
